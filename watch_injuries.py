@@ -15,7 +15,8 @@ from bs4 import BeautifulSoup
 
 URL = "https://www.rotowire.com/euro/news.php?view=injuries"
 STATE_FILE = os.path.join(os.path.dirname(__file__), "seen_injuries.json")
-SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
+SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
+SLACK_CHANNEL = os.environ.get("SLACK_CHANNEL")  # e.g. "#injury-alerts" or "C0123456789"
 
 DATE_RE = re.compile(
     r"(January|February|March|April|May|June|July|August|September|"
@@ -96,18 +97,32 @@ def notify_slack(item):
         snippet = snippet[:400].rsplit(" ", 1)[0] + "..."
 
     payload = {
+        "channel": SLACK_CHANNEL,
         "text": (
             f"*New EuroLeague injury update:* <{item['url']}|{item['player']}> "
             f"— {item['date']}\n{snippet}"
-        )
+        ),
     }
-    resp = requests.post(SLACK_WEBHOOK_URL, json=payload, timeout=10)
+    resp = requests.post(
+        "https://slack.com/api/chat.postMessage",
+        headers={"Authorization": f"Bearer {SLACK_BOT_TOKEN}"},
+        json=payload,
+        timeout=10,
+    )
     resp.raise_for_status()
+    data = resp.json()
+    if not data.get("ok"):
+        # Slack returns 200 OK even on logical failures (e.g. bad channel,
+        # missing scope, bot not invited to channel) — surface those here.
+        raise RuntimeError(f"Slack API error: {data.get('error')}")
 
 
 def main():
-    if not SLACK_WEBHOOK_URL:
-        print("ERROR: SLACK_WEBHOOK_URL environment variable is not set.", file=sys.stderr)
+    if not SLACK_BOT_TOKEN or not SLACK_CHANNEL:
+        print(
+            "ERROR: SLACK_BOT_TOKEN and/or SLACK_CHANNEL environment variables are not set.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     seen = load_seen()
