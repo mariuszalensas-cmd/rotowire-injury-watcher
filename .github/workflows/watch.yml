@@ -2,9 +2,9 @@ name: RotoWire Injury Watcher
 
 on:
   schedule:
-       # Runs every minute. Note: GitHub's scheduler can lag by a few minutes
-   # during high load, so treat this as "roughly every minute," not exact.
-   - cron: "* * * * *"
+    # Runs every 30 minutes. Note: GitHub's scheduler can lag by a few minutes
+   # during high load, so treat this as "roughly every 30 minutes," not exact.
+   - cron: "*/30 * * * *"
   workflow_dispatch: {}  # lets you trigger it manually from the Actions tab
 
 permissions:
